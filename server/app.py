@@ -13,8 +13,30 @@ app = create_app(env)
 
 class Books(Resource):
     def get(self):
-        books = [BookSchema().dump(b) for b in Book.query.all()]
-        return books, 200
+        try:
+            page = int(request.args.get("page", 1))
+        except (TypeError, ValueError):
+            page = 1
+
+        try:
+            per_page = int(request.args.get("per_page", 5))
+        except (TypeError, ValueError):
+            per_page = 5
+
+        pagination = (
+            Book.query.order_by(Book.id.asc())
+            .paginate(page=page, per_page=per_page, error_out=False)
+        )
+
+        items = BookSchema(many=True).dump(pagination.items)
+        response = {
+            "page": page,
+            "per_page": per_page,
+            "total": pagination.total,
+            "total_pages": pagination.pages,
+            "items": items,
+        }
+        return response, 200
 
 
 api.add_resource(Books, '/books', endpoint='books')
